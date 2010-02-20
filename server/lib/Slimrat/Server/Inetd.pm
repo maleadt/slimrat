@@ -29,6 +29,12 @@ use XML::RPC;
 use strict;
 use warnings;
 
+# Connection constants
+use constant {
+	UNKNOWN	=> 0,
+	HTTP	=> 1
+};
+
 
 ################################################################################
 # Attributes
@@ -205,68 +211,92 @@ request headers).
 
 sub process_connection {
 	my ($self, $client) = @_;
+	$self->logger->verbose('processing client connection');
+	
+	# Identification flags
+	my $type = UNKNOWN;
 	
 	# Extract the request message
 	my $message;
-	while(<$client>)
-	{
-		last if /^\r\n$/;
+	while(<$client>) {
+		# Try to identify the request
+		if ($type == UNKNOWN) {
+			if (/HTTP/) {
+				$type = HTTP;
+			}
+		}
+		
+		# Quit waiting when needed
+		last if ($type eq HTTP && $_ =~ /^\r\n$/);
+		
 		$message .= $_;
 	}
-	$self->logger->debug("recieved client request", $message);
+	$self->logger->debug("extracted request header", $message);
+	return $self->logger->error("could not identify request header")
+		unless defined $type;
+	
+	# Process the connection
+	$| = 1;
+	if ($type == HTTP) {
+		$self->process_http($client, $message);
+	}
+	
+	$self->logger->verbose('closing connection');
+	close($client);
+	exit(fork);
+}
+
+=pod
+
+=head2 C<$inetd->process_http($client, $message)
+
+This method processes an identified HTTP connection. This identification is
+based on the headers containing the HTTP keyword. This method processes
+the headers, extracts an eventual body, and calls the correct method
+to process that data.
+Supported content is:
+=over
+=item XML-RPC over HTTP: handled by C<process_http_xmlrpc>
+=item TODO: regular GET: handled by C<process_http_get>
+=back
+
+=cut
+
+sub process_http {
+	my ($self, $client, $message) = @_;
+	$self->logger->debug('processing HTTP request');
 
 	# Split the request message in the request line and a set of headers
 	@_ = split(/\n/, $message);
 	my $request = shift @_;
 	my %headers = map{ m/^(.+?): (.*?)\s*$/ } @_;
 	
-	# TODO: identify http instead of guessing
-	$self->process_http($client, $request, %headers);
-	close($client);
-	select STDOUT;
-	exit(fork);
-}
-
-=pod
-
-=head2 C<$inetd->process_http($client, %headers)
-
-This method processes an identified HTTP connection. The passed headers have
-already been extracted (as they were needed to determine the protocol), which
-only leaves the HTTP body to be decoded (in case of a POST request).
-
-After identifying the application protocol, the correct handler is called:
-=over
-=item XML-RPC over HTTP: process_http_xmlrpc
-=back
-
-=cut
-
-sub process_http {
-	my ($self, $client, $request, %headers) = @_;
-	
 	# Split the request line
 	my ($method, $uri, $version) = split(/ /, $request);
 
 	# Check request type
-	if ($method eq 'POST') {		
-		# Get request body
+	if ($method eq 'POST') {
+		# Extract the POST body
 		my $body;
 		while(<$client> )
 		{
 			$body .= $_;
 			last if (length($body) >= $headers{'Content-Length'});
 		}
+		$self->logger->debug("extracted HTTP-POST body", $body);
 		
-		# TODO: identify xmlrpc instead of guessing
-		$self->process_http_xmlrpc($client, $body);	
+		# Identify the type of request
+		if ($headers{'Content-Type'} eq 'text/xml') {
+			$self->process_http_xmlrpc($client, $body);
+		} else {
+			$self->logger->error('refusing unused content-type \'' . $headers{'Content-Type'} . '\'');
+			print $client "HTTP/1.0 400 BAD REQUEST\r\n\r\n";
+			print $client "<H1>400 Bad Request</H1>";
+		}	
 	} else {
-		# Send error
-		$self->logger->error("refusing unknown request method '$method'");
-		select $client;
-		$| = 1;		
+		$self->logger->error("refusing unused method '$method'");
 		print $client "HTTP/1.0 501 NOT IMPLEMENTED\r\n\r\n";
-		print $client "<H1>501 Method Not Implemented</H1>";	
+		print $client "<H1>501 Method Not Implemented</H1>";
 	}
 }
 
@@ -275,11 +305,14 @@ sub process_http {
 =head2 C<$inetd->process_http_xmlrpc($client, $request)
 
 This method handles an application protocol over HTTP, in this case XML-RPC.
+The identification is made on the Content-Type being 'text/xml'. This may
+in a later stage be refined to a specific URI on the server domain.
 
 =cut
 
 sub process_http_xmlrpc {
 	my ($self, $client, $body) = @_;
+	$self->logger->debug('processing XML-RPC request');
 	
 	# Get response
 	my $response = $self->xmlrpc()->receive($body, sub {
@@ -294,12 +327,10 @@ sub process_http_xmlrpc {
 	});
 	$self->logger->debug("sending client response", $response);
 
-	# Send response
-	select $client;
-	$| = 1;		
+	# Send response	
 	print $client "HTTP/1.0 200 OK\r\n";
 	print $client "Content-type: text/xml\r\n\r\n";
-	print $client $response;	
+	print $client $response;
 }
 
 =pod
@@ -325,23 +356,34 @@ sub invoke {
 		$self->logger->warning('client caused warn signal', @_);
 	};
 	
+	
 	#
 	# Classless methods
 	#
 	
 	if (not defined $package) {
 		if ($method eq "hello") {
-			require Data::Dumper;
+			use Data::Dumper;
 			print Dumper(\@params);
-		} else {
-			fault('unknown method');
+			return;
 		}
 	}
+	
+	
+	#
+	#
+	#
+	
+	
+	#
+	# Other
+	#
 	
 	
 	else {
 		fault('unknown package');
 	}
+	fault('unknown method');
 	
 }
 
