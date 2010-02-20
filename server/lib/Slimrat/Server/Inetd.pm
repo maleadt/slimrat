@@ -25,7 +25,6 @@ use Moose;
 use IO::Socket;
 use XML::RPC;
 
-
 # Write nicely
 use strict;
 use warnings;
@@ -276,8 +275,6 @@ sub process_http {
 =head2 C<$inetd->process_http_xmlrpc($client, $request)
 
 This method handles an application protocol over HTTP, in this case XML-RPC.
-It is passed the request, as this was needed to identify the application
-protocol.
 
 =cut
 
@@ -291,13 +288,9 @@ sub process_http_xmlrpc {
 		# Split in package and method
 		my ($package, $method) = split(/\./, $rpc_name);
 		unless (defined $method) { $method = $package; $package = undef; }
-	
-		# Direct server commands
-		if (! defined $package) {
-			print "Received HELLO request, with parameters:\n";
-			use Data::Dumper;
-			print Dumper(\@rpc_params);
-		}
+		
+		# Invoke the method
+		return $self->invoke($package, $method, @rpc_params);
 	});
 	$self->logger->debug("sending client response", $response);
 
@@ -307,6 +300,49 @@ sub process_http_xmlrpc {
 	print $client "HTTP/1.0 200 OK\r\n";
 	print $client "Content-type: text/xml\r\n\r\n";
 	print $client $response;	
+}
+
+=pod
+
+=head2 C<$inetd->invoke($package, $method, @params)
+
+This method provides the connection between an RPC-request and an actual
+local procedure call. Before making this call, the method verifies the usage,
+and possibly returns an XML-RPC fault prematurely.
+
+=cut
+
+sub invoke {
+	my ($self, $package, $method, @params) = @_;
+	$self->logger->debug("invoking '$method'" . ($package?" in package '$package'":''));
+	
+	# Prevent critical errors from reaching the user
+	$SIG{__DIE__} = sub {
+		$self->logger->error('client caused die-signal', @_);
+		fault('internal error');
+	};
+	$SIG{__WARN__} = sub {
+		$self->logger->warning('client caused warn signal', @_);
+	};
+	
+	#
+	# Classless methods
+	#
+	
+	if (not defined $package) {
+		if ($method eq "hello") {
+			require Data::Dumper;
+			print Dumper(\@params);
+		} else {
+			fault('unknown method');
+		}
+	}
+	
+	
+	else {
+		fault('unknown package');
+	}
+	
 }
 
 ################################################################################
@@ -327,6 +363,14 @@ $SIG{CHLD} = \&signal_child;
 
 sub signal_child {
 	wait;
+}
+
+sub fault {
+	my ($message, $code) = @_;
+	$code ||= -1;
+	
+	$XML::RPC::faultCode = $code;
+	die($message . "\n");	# The "\n" prevents die() from printing a trace
 }
 
 1;
