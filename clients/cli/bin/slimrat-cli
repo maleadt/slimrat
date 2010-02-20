@@ -1,0 +1,36 @@
+#!/usr/bin/env perl
+
+#
+# Configuration
+#
+
+# XXX: library location
+use lib '../lib';
+
+# Write nicely
+use warnings;
+use strict;
+
+# Packages
+use XML::RPC;
+
+# Custom packages
+#use Slimrat::Server::Database;
+
+
+#
+# Main
+#
+
+# Setup a connection to the server
+my $xmlrpc = XML::RPC->new('http://localhost:6800');
+
+# Test
+my $result = $xmlrpc->call('hello', {
+	client		=> "slimrat-cli/0.01",
+	protocol	=> 1
+});
+print "Result:\n";
+use Data::Dumper;
+print Dumper($result);
+

@@ -1,0 +1,218 @@
+% data.tex - Slimrat 2.0 design reference document
+
+%
+% Configuration
+%
+
+
+\documentclass{article}
+
+% Include packages
+\usepackage{uml}
+\usepackage{verbatim} % For comment block
+
+% Function definitions
+\makeatletter
+\def\s@btitle{\relax}
+\def\subtitle#1{\gdef\s@btitle{#1}}
+\def\@maketitle{%
+  \newpage
+  \null
+  \vskip 2em%
+  \begin{center}%
+  \let \footnote \thanks
+    {\LARGE \@title \par}%
+                \if\s@btitle\relax
+                \else\typeout{[subtitle]}%
+                        \vskip .5pc
+                        \begin{large}%
+                                \textsl{\s@btitle}%
+                                \par
+                        \end{large}%
+                \fi
+    \vskip 1.5em%
+    {\large
+      \lineskip .5em%
+      \begin{tabular}[t]{c}%
+        \@author
+      \end{tabular}\par}%
+    \vskip 1em%
+    {\large \@date}%
+  \end{center}%
+  \par
+  \vskip 1.5em}
+\makeatother
+
+% Setup a document
+\begin{document}
+\title{Slimrat 2.0}
+\subtitle{Design reference}
+\author{Tim Besard}
+\date{\today}
+\maketitle
+
+% Custom spacing properties
+\parskip 7.2pt
+
+% Document abstract
+\begin{abstract}
+This document describes the choices made when designing slimrat 2.0, among with detailled information explaining how to implement alternatives for the several pluggable parts of a slimrat server.
+
+It also serves as a reference guide to implement a fully-functional client, by detailling the remote system-interface a slimrat server provides.
+
+\phantom{.}
+Although the extent of this document might appear disproportional considering the size of the resulting application, it mainly is an experiment to prove (or disprove) the worthiness of a university course a followed recently (Application Design 101).
+\end{abstract}
+
+% List of figures
+\newpage
+\listoffigures
+
+
+%
+% STEP ONE -- REQIURMENT ANALYSIS
+%
+
+\newpage
+\section{Requirment analysis}
+
+Let's start with reflecting on a critical question: why are people using slimrat? First, there is the capability to autonomically process download tasks which otherwise would have taken quite a bit of attention from the user. But to achieve this, plenty of other (and to be honest, better) download managers are out there, including JDownloader and Tucan. Given that there are still quite some people using slimrat (well over 2000, given the download count of the last stable release) this probably isn't the primary reason of using slimrat.
+
+As slimrat is currently more or less server oriented, this indicates that people use slimrat to relieve their main computer from the download process. This can be to save energy, to eliminate noise, or just to allow flexible management (e.g. reboot when he wants to) without disrupting the download process.
+
+With this insight, we decided to redesign slimrat to work optimally when used in combination with a remote server. This however does not make it impossible to use slimrat in a desktop-oriented manner, it just won't be the primary target.
+
+\subsection{For users}
+
+At first sight, what users expect from a download-manager is quite limited: the capability to efficiently and autonomically download files from several download providers, in a reliable manner:
+\begin{itemize}
+\item{Download capability: slimrat should support as many URLs as possible.}
+\item{Efficiency: with applies to the network usage (concurrent downloads) and system resource usage.}
+\item{Autonomy: user intervention should be minimized.}
+\item{Reliability: slimrat should be capable of handling network as well as system failures.}
+\end{itemize}
+
+This looks like a slim enumeration. However, having seen quite some feature-requests arise on the issue tracker, some secondary goals should get targeted as well:
+\begin{itemize}
+\item{Configurability: users want to be able to fine-tune the download process, e.g. change the download rate, pick an other download directory, schedule downloads, use premium services, ...}
+\item{Flexibility of configuration: users want to apply that configuration to selective downloads, or group downloads together and configure those all at once.}
+\item{Portability: slimrat shouldn't be limited to one platform or system.}
+\end{itemize}
+
+\subsection{For developers}
+
+Developer-wise there is one main goal: maintanability. This does not only mean making it easy to fix bugs, but also to implement new features. However, since we want to attract as much developers as possible, it is an important secondary goal to ease the development process and make it possible to hack stuff into slimrat without endangering its core reliability. To achieve this, we'll include plugabillity on several core levels of slimrat.
+
+
+%
+% STEP TWO - DESIGN
+%
+\newpage
+\section{Design}
+
+From now on, this document will only be relevant to the slimrat server, referred to as simple "slimrat".
+
+\subsection{Application model}
+
+Given the requirment analysis, we can model an object-oriented system which should suffice most needs.
+
+\subsubsection{Technical classes}
+
+To achieve some of the requirements proposed in the first section, we'll need to introduce specific classes which have not been mentioned in the initial analysis. Those classes do not fullfill a logical need, but help accomplish them by providing the neccesary framework.
+
+To implement {\textbf concurrent downloads}, we will need to seperate the download itself from the initiator. To achieve that, we propose to split the download action in two objects: the {\textit DownloadManager}, and the {\textit Download}. A Download object contains all essential data concerning the download, being its URI, a progress indication, a list of restrictions, etc. The download functionality though, is packed in the DownloadManager. Upon start, some DownloadManagers are launched into the background which autonomically and concurrently fetch the neccesary information to construct a Download from the database.
+
+To achieve a high level of {\textit autonomy }, slimrat will provide in a {\textit Browser} object. This object, instantiated by a DownloadManager to process a Download, will contain the needed functionality to emulate the behaviour of a user clicking through pages. The Browser is not used to process the incoming URL, it is {\textit merely an auxiliary asset} to provide the Plugin with some functionality to ease the processing of HTML pages.
+
+As users want to {\textbf fine-tune the download process}, we will need mechanisms to control if and how a download is processed.
+%% TODO: restrictions? Als plugin?
+
+As slimrat aims to be {\textbf easy to hack and extend}, we aim to use a {\textit pluggable system providing core functionality}. That functionality includes:
+\begin{itemize}
+\item{URL handling: a plugin uses functionality in the Browser to process a given URI and route the final data to the DownloadManager.}
+\item{Restriction handling: a plugin provides the means to evaluate user-defined restrictions applied to a given Download.}
+\item{Data backend alternatives: a plugin implements a neccesary set of functions slimrat uses to persist its data.}
+\end{itemize}
+The pluggable backend also helps to improve portability, where it can provide an alternative to an unavailable application (say, a flat-file backend when no database is available).
+%%TODO: how to implement plugins, all managed by PluginManager? How to identify? How to include?
+%%TODO: the rest
+
+
+
+\subsubsection{Static diagram}
+
+First, an enumeration of the classes needed:
+\begin{itemize}
+\item{Server}
+\end{itemize}
+
+\begin{comment}
+\begin{figure}[hb]
+	\umlDiagram[box=,border,sizeX=12cm,sizeY=10cm,ref=diagram]{%
+	  \umlClass[reference=Samochod, refpoint=tm, pos=\umlTop{diagram}, posDelta={0,-2}]{Samochod}{%
+	      \umlAttribute[visibility=-, type=String]{numerRejestracyjny}
+	      \umlAttribute[visibility=-, type=int]{rokProdukcji}
+	   }{%
+	      \umlMethod[visibility=+, ]{Samochod}{String numer, int rok}
+	      \umlMethod[visibility=\$, returntype=float]{obliczSpalanie(float paliwo, float km)}{}
+	  }
+	  \umlClass[reference=Parking, refpoint=bm, pos=\umlBottom{diagram}, posDelta={0,2}]{Parking}{%
+	      \umlAttribute[visibility=-, type=Samochod{$[]$}]{miejsca}
+	   }{%
+	      \umlMethod[visibility=+, ]{Parking}{int miejsca}
+	      \umlMethod[visibility=+, returntype=int]{zaparkuj(Samochod samochod)}{}
+	      \umlMethod[visibility=+, returntype=Samochow]{zwolnij}{int miejsce}
+	      \umlMethod[visibility=+, returntype=int]{ileWolnychMiejsc}{}
+	      \umlMethod[visibility=+, returntype=void]{podglad}{}
+	  }
+	  \umlAggregation[ref=AB, nodesep=0ex]{Samochod}{Parking}{
+	      \umlLabelA{AB}{*}
+	      \umlLabelB{AB}{1}
+	   }
+	}
+	\caption{An example class-diagram.}
+\end{figure}
+\end{comment}²
+
+\subsubsection{Dynamic diagram}
+
+\subsubsection{Functional diagram}
+
+\subsection{Environment}
+
+As we achieve portability through a dynamic client, we can safely assume some things about slimrat's environment.
+
+First, we'll assume the {\textbf operation system to be Linux}, which implicates the way we handle {\textit paths} as well as the use of {\textit system-calls}.
+
+Secondly, we {\textbf need a Perl interpreter}. As we have learned from several issues reported against slimrat 1.x, we however cannot assume a sufficiently capable Perl to be available. A version requirment station Perl 5.8 at minimum seems fair, although it eliminates the possibility for quite some {\textit synctactic sugary}, most modules seem to work and it won't hurt the development much. However, many lightweight distributions do leave some Perl features out, the most notable being {\textit support for ithreads} (interpreter threads). This because, as it seems, ithreads in Perl 5.8 are quite memory-inefficient. Given this limitation, I have done some research to vailable alternatives, the most notable being the fork() system-call. This way of tackling the multi-download requirment is very portable, but has to be handled very carefully. Given that we assume a Linux OS, the fork() call is very lightweight and does not even use much memory. It might create a new process, but it'll remain to use the parent memory pages using a copy-on-write paging system. So as long as we minimize memory-writes in the child-process, spawning new processes instead of using threads should be a good way of achieving concurrency.
+We also assume the Perl distribution to be sufficiently capable (no microperl), as the system-administrator might need to install some obscure dependancies not distributed by the package manager available.
+
+\subsection{Reuse}
+
+\subsubsection{External code}
+
+There are several levels on which we can reuse existing code. The first of which being the {\textbf communication protocol for external interfaces}. We could use a binary protocol here, but that would make it hard to implement, induce a hefty specification, might get blocked at ISP level and be very error-prone. This is why we decided to reuse proven protocols, being {\textit XML-RPC over HTTP}. Using HTTP makes it easy to incorporate otherwise difficult features, like encryption (there are plenty of HTTPS libraries), as well as compression (which is more or less built in HTTP as is). Using XML-RPC provides a flexible way or clients to address internal libraries seamlessly, as well as a good framework to pass complex data (given several basetypes, arrays, and even structs).
+
+At code level, we decided to reuse some libraries as well. As internally most data will be structured into objects, which eventually have to be pushed to the backend (and getting saved persistently using the specific functions each backend provides), choices arise {\textbf how to implement those objects}. It is possible to pack all that functionality in the respective getters and setters from the objects, but it is also possible to use a modern object-oriented framework providing synctactic sugary (such as lazy accessors, or attribute after-triggers) to ease the pain and increase maintainability by a whole lot. We chose the latter, and decided to use Moose to concretisize those modern functionality.
+How nice the {\textit Moose framework} and its plenty extensions might be, we still have a low-end platform to target. This means we should limit the usage of this rich object framework to its core functionality (of which benchmarks have proven they do not hurt performance much). This also eases the effort required to install those packages, as Moose has a lightweight pure-perl alternative with no external dependancies whatsoever: Mouse. This'll make it easier for limited distributions to install yet another dependancy, as it doesn't require a whole lot to get installed along.
+
+\subsubsection{Internal code}
+
+\subsection{System interface}
+
+\subsection{Exception handling}
+
+\subsection{Security}
+
+\subsection{Testing}
+
+\subsection{Data design}
+
+\subsection{Procedure design}
+
+
+%
+% STEP THREE - REALISATION
+%
+\newpage
+\end{document}

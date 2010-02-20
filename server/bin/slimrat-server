@@ -1,0 +1,146 @@
+#!/usr/bin/env perl
+
+################################################################################
+# Configuration
+#
+
+# XXX: library location
+use lib '../lib';
+
+# Packages
+use Slimrat::Server::Configuration;
+use Slimrat::Server::PluginManager;
+use Slimrat::Server::Inetd;
+
+# Write nicely
+use warnings;
+use strict;
+
+
+################################################################################
+# Main
+#
+
+print "* Bootstrapping slimrat\n";
+
+# Set-up the configuration manager
+# Config does not need a config nor a logger
+print "- Loading configuration\n";
+my $config = new Slimrat::Server::Configuration;
+my $config_server = $config->get_section('server');
+
+# Default configuration
+$config_server->set_default('logger', 'console');
+$config_server->set_default('backend', 'memory');
+
+# DEBUG CONFIGURATION
+$config->get_section('console')->set('verbosity', 5);
+
+# Set-up the plugin manager
+# Pluginmanager cannot use a logger or backend
+print "- Loading plugin manager\n";
+my $pluginmanager = new Slimrat::Server::PluginManager(
+	config	=> $config->get_section("pluginmanager")
+);
+
+# Load a new logger
+print "- Loading logger\n";
+my $logger_name = $config_server->get("logger");
+my $logger = $pluginmanager->get_plugin(
+	'Slimrat::Server::Plugin::Logger',
+	$logger_name,
+	config	=> $config->get_section($logger_name)
+);
+print " Switching output\n";
+
+# Load the backend
+$logger->info("loading backend");
+my $backend_name = $config_server->get("backend");
+my $backend = $pluginmanager->get_plugin(
+	'Slimrat::Server::Plugin::Backend',
+	$backend_name,
+	config	=> $config->get_section($backend_name),
+	logger	=> $logger->get_section("backend")
+);
+
+# Load the download manager
+# TODO: download manager nodig? Waarom niet gewoon alle functionaliteit in een
+#       Moose::Role stoppen?
+#my $downloadmanager = new Slimrat::Server::DownloadManager(
+#	config	=> $config->get_section("downloadmanager"),
+#	logger	=> $logger,
+#	backend	=> $backend
+#);
+
+# Set-up the internet server
+my $inetd = new Slimrat::Server::Inetd(
+	config	=> $config->get_section("inetd"),
+	logger	=> $logger,
+	backend	=> $backend,
+);
+
+# Start slimrat
+$inetd->run();
+
+
+################################################################################
+# Routines
+#
+
+
+
+1;
+
+__END__
+
+################################################################################
+# Documentation
+#
+
+=pod
+
+=head1 NAME
+
+slimrat-server - Server component of slimrat
+
+=head1 SYNOPSIS
+
+Slimrat is an extensible download manager.
+
+This is the server component of slimrat, which contains all functionality.
+After installation, you should be able to start this server by typing:
+  slimrat-server
+
+After this, you still need to connect an interface to this server instance.
+
+=head1 CONFIGURATION
+
+The server-component of slimrat (and all its subcomponents) is configured
+through a configuration file. Each subcomponent has its own configuration flags,
+which are documented in the CONFIGURATION section of each one of it.
+
+To configure a specific component, open up the configuration file, and locate
+the section related to the component (which is labeled "[$component]"). Place
+all your configuration entries beneath.
+
+For more info about the configuration system, have a look at
+C<Slimrat::Server::Configuration>. For specific configuration help, look at the
+module you are trying to configure.
+
+Below are the configuration entries relevant to the server component itself,
+labeled under the "server" section.
+
+=head2 C<logger>
+
+This entry contains the name of the Logger plugin used to log runtime messages.
+To configure the logger itself, look up the configuration information in the
+specific plugin and place the entries in an identically named subsection
+(eg. "[syslog]" and not "[logger]").
+
+The plugin in use should implement the C<Slimrat::Server::Plugin::Logger> role,
+and be a subpackage of it as well.
+# TODO: this is not checked explicitly.
+
+B<Default>: console.
+
+=head2 C<backend>

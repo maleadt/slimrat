@@ -1,0 +1,29 @@
+Finish directory layout & build scripts: http://munin.projects.linpro.no/svn/munin/trunk/
+
+Plugin?
+	- URL
+	- Restriction
+	- Captcha?
+	- Backend
+
+url handlers -> retry framework? wait() before rturn -> wait if no need to wait?
+
+
+prob altijd hoe config loggen, hoe log configge
+-> geen speciale logger, enkel warn/die, en syslog na fork
+-> dump -> browser history?
+-> 
+
+
+Alles pakt logger & config als non-required rw attribute.
+Default van logger is Console
+Default van config is empty config
+after-trigger van config is een default setter
+
+config is atomair (geen logger/config)
+
+
+
+
+Consider switching to
+	http://search.cpan.org/~adamk/Config-Tiny-2.12/lib/Config/Tiny.pm

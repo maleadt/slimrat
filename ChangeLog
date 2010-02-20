@@ -1,0 +1,18 @@
+2010-01-19  Tim Besard  <tim-dot-besard-at-gmail-dot-com>
+
+    * created more perl-ish directory layout
+
+    * finished design document and database layout
+
+
+2010-01-21  Tim Besard  <tim-dot-besard-at-gmail-dot-com>
+
+    * server: added pure-perl webserver and initial XML-RPC handling
+
+    * config: started porting to Mouse
+
+    * database: started database abstraction layer
+
+    * tools: added perlcritic tool
+
+

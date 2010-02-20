@@ -1,0 +1,27 @@
+About
+*****
+
+
+Release notes
+*************
+
+This is svn-trunk, release notes do not apply here.
+
+
+Design notes
+************
+
+Copy-on-write
+=============
+
+Care has been taken to improve slimrat's performance, which has led to the
+  choice of using fork() instead of ithreads. Linux -- the main target for
+  slimrat -- implements the fork() system-call quite efficiently, improving
+  its performance by using copy-on-write paging.
+
+In order to savour this advantage, fork()'d threads should minimize any writes
+  to the memory, this contrary how slimrat 1.x worked. Inter-process
+  communication should be accomplished through the XML-RPC interface (if this
+  turns out to be too slow, the server might get extended with SYSV IPC or
+  Unix sockets), and more persistent data should always end up in the database.
+
