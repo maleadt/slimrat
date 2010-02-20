@@ -52,18 +52,18 @@ use constant {
 	SLIMRAT_BAD_REQUEST		=> 21
 };
 my %errors_messages = (
-	SLIMRAT_VERSION_NOT_SUPPORTED	=> 'version not supported',
+	SLIMRAT_VERSION_NOT_SUPPORTED()	=> 'version not supported',
 	
 	# System failures
-	SLIMRAT_INTERNAL_FAILURE	=> 'internal failure',
-	SLIMRAT_BACKEND_FAILURE		=> 'backend failure',
+	SLIMRAT_INTERNAL_FAILURE()	=> 'internal failure',
+	SLIMRAT_BACKEND_FAILURE	()	=> 'backend failure',
 	
 	# Service issues
-	SLIMRAT_SERVICE_UNAVAILABLE	=> 'service unavailable',
+	SLIMRAT_SERVICE_UNAVAILABLE()	=> 'service unavailable',
 	
 	# Method issues
-	SLIMRAT_NOT_FOUND		=> 'not found',
-	SLIMRAT_BAD_REQUEST		=> 'bad request'
+	SLIMRAT_NOT_FOUND()		=> 'not found',
+	SLIMRAT_BAD_REQUEST()		=> 'bad request'
 );
 
 
@@ -378,6 +378,9 @@ sub invoke {
 	
 	# Prevent critical errors from reaching the user
 	$SIG{__DIE__} = sub {
+		# Ignore DIE's which _should_ read XML::RPC's own handler
+		die(@_) if (caller(1))[3] =~ q{fault_slimrat$};
+		
 		$self->logger->error('client caused die-signal', @_);
 		fault_slimrat(SLIMRAT_INTERNAL_FAILURE);
 	};
@@ -400,8 +403,16 @@ sub invoke {
 	
 	
 	#
+	# Backend
 	#
-	#
+	
+	elsif ($package eq "backend") {
+		if ($method eq "add_download") {
+			use Data::Dumper;
+			print Dumper(\@params);
+			return;			
+		}
+	}
 	
 	
 	#
@@ -464,7 +475,7 @@ sub fault_http {
 	
 	my $message = status_message($code) || "";
 	my $message_uc = uc($message);
-	my $message_ucfirst = join(' ', map { ucfirst } split(' ', $message));
+	my $message_ucfirst = join(' ', map { ucfirst } split(' ', lc($message)));
 
 	print $client "HTTP/1.0 $code $message_uc\r\n\r\n";
 	print $client "<H1>$code $message_ucfirst</H1>";

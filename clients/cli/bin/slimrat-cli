@@ -34,3 +34,6 @@ print "Result:\n";
 use Data::Dumper;
 print Dumper($result);
 
+$xmlrpc->call('Backend.add_download', {
+	uri	=> 'http://www.google.com'
+});
