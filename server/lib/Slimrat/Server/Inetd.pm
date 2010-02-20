@@ -35,6 +35,27 @@ use constant {
 	HTTP	=> 1
 };
 
+# Error codes
+# TODO: enumerate them in constants
+my %errors_http = (
+	401	=> 'bad request',
+	501	=> 'not implemented'
+);
+my %errors_xmlrpc = (
+	0	=> 'version not supported',
+	
+	# System failures
+	1	=> 'internal failure',
+	2	=> 'backend failure',
+	
+	# Service issues
+	10	=> 'service unavailable',
+	
+	# Method issues
+	20	=> 'not found',
+	21	=> 'bad request'
+);
+
 
 ################################################################################
 # Attributes
@@ -290,13 +311,11 @@ sub process_http {
 			$self->process_http_xmlrpc($client, $body);
 		} else {
 			$self->logger->error('refusing unused content-type \'' . $headers{'Content-Type'} . '\'');
-			print $client "HTTP/1.0 400 BAD REQUEST\r\n\r\n";
-			print $client "<H1>400 Bad Request</H1>";
+			fault_http($client, 400);
 		}	
 	} else {
 		$self->logger->error("refusing unused method '$method'");
-		print $client "HTTP/1.0 501 NOT IMPLEMENTED\r\n\r\n";
-		print $client "<H1>501 Method Not Implemented</H1>";
+		fault_http($client, 501);
 	}
 }
 
@@ -350,7 +369,7 @@ sub invoke {
 	# Prevent critical errors from reaching the user
 	$SIG{__DIE__} = sub {
 		$self->logger->error('client caused die-signal', @_);
-		fault('internal error');
+		fault_xmlrpc(1);
 	};
 	$SIG{__WARN__} = sub {
 		$self->logger->warning('client caused warn signal', @_);
@@ -379,11 +398,7 @@ sub invoke {
 	# Other
 	#
 	
-	
-	else {
-		fault('unknown package');
-	}
-	fault('unknown method');
+	fault_xmlrpc(20);
 	
 }
 
@@ -401,18 +416,47 @@ Child signal handler (which issues a 'wait' syscall to avoid zombie processes).
 
 =cut
 
-$SIG{CHLD} = \&signal_child;
-
 sub signal_child {
 	wait;
 }
 
-sub fault {
-	my ($message, $code) = @_;
-	$code ||= -1;
+$SIG{CHLD} = \&signal_child;
+
+=pod
+
+=head2 C<fault_xmlrpc>
+
+Fault generator for the XML-RPC protocol. As C<XML::RPC> is able to handle
+faults itself, we just need to generate a message and C<die()>.
+
+=cut
+
+sub fault_xmlrpc {
+	my ($code) = @_;
+	my $message = $errors_xmlrpc{$code} || '';
 	
 	$XML::RPC::faultCode = $code;
 	die($message . "\n");	# The "\n" prevents die() from printing a trace
+}
+
+=pod
+
+=head2 C<fault_http>
+
+Fault generator for the HTTP protocol. This looks up the error message and
+writes a browser-friendly error message to the active socket.
+
+=cut
+
+sub fault_http {
+	my ($client, $code) = @_;	
+	
+	my $message = $errors_http{$code} || "";
+	my $message_uc = uc($message);
+	my $message_ucfirst = join(' ', map { ucfirst } split(' ', $message));
+
+	print $client "HTTP/1.0 $code $message_uc\r\n\r\n";
+	print $client "<H1>$code $message_ucfirst</H1>";
 }
 
 1;
