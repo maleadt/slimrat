@@ -24,6 +24,7 @@ listening for remote requests and translating them to local procedure calls.
 use Moose;
 use IO::Socket;
 use XML::RPC;
+use HTTP::Status qw(:constants :is status_message);
 
 # Write nicely
 use strict;
@@ -36,24 +37,33 @@ use constant {
 };
 
 # Error codes
-# TODO: enumerate them in constants
-my %errors_http = (
-	401	=> 'bad request',
-	501	=> 'not implemented'
-);
-my %errors_xmlrpc = (
-	0	=> 'version not supported',
+use constant {
+	SLIMRAT_VERSION_NOT_SUPPORTED	=> 0,
 	
 	# System failures
-	1	=> 'internal failure',
-	2	=> 'backend failure',
+	SLIMRAT_INTERNAL_FAILURE	=> 1,
+	SLIMRAT_BACKEND_FAILURE		=> 2,
 	
 	# Service issues
-	10	=> 'service unavailable',
+	SLIMRAT_SERVICE_UNAVAILABLE	=> 10,
 	
 	# Method issues
-	20	=> 'not found',
-	21	=> 'bad request'
+	SLIMRAT_NOT_FOUND		=> 20,
+	SLIMRAT_BAD_REQUEST		=> 21
+};
+my %errors_messages = (
+	SLIMRAT_VERSION_NOT_SUPPORTED	=> 'version not supported',
+	
+	# System failures
+	SLIMRAT_INTERNAL_FAILURE	=> 'internal failure',
+	SLIMRAT_BACKEND_FAILURE		=> 'backend failure',
+	
+	# Service issues
+	SLIMRAT_SERVICE_UNAVAILABLE	=> 'service unavailable',
+	
+	# Method issues
+	SLIMRAT_NOT_FOUND		=> 'not found',
+	SLIMRAT_BAD_REQUEST		=> 'bad request'
 );
 
 
@@ -311,11 +321,11 @@ sub process_http {
 			$self->process_http_xmlrpc($client, $body);
 		} else {
 			$self->logger->error('refusing unused content-type \'' . $headers{'Content-Type'} . '\'');
-			fault_http($client, 400);
+			fault_http($client, HTTP_BAD_REQUEST);
 		}	
 	} else {
 		$self->logger->error("refusing unused method '$method'");
-		fault_http($client, 501);
+		fault_http($client, HTTP_NOT_IMPLEMENTED);
 	}
 }
 
@@ -369,7 +379,7 @@ sub invoke {
 	# Prevent critical errors from reaching the user
 	$SIG{__DIE__} = sub {
 		$self->logger->error('client caused die-signal', @_);
-		fault_xmlrpc(1);
+		fault_slimrat(SLIMRAT_INTERNAL_FAILURE);
 	};
 	$SIG{__WARN__} = sub {
 		$self->logger->warning('client caused warn signal', @_);
@@ -398,7 +408,7 @@ sub invoke {
 	# Other
 	#
 	
-	fault_xmlrpc(20);
+	fault_slimrat(SLIMRAT_NOT_FOUND);
 	
 }
 
@@ -424,16 +434,17 @@ $SIG{CHLD} = \&signal_child;
 
 =pod
 
-=head2 C<fault_xmlrpc>
+=head2 C<fault_slimrat>
 
-Fault generator for the XML-RPC protocol. As C<XML::RPC> is able to handle
-faults itself, we just need to generate a message and C<die()>.
+Fault generator for the slimrat protocol. The fault specification is sent
+through the fault functionality of the XML-RPC protocol, which is handled
+by L<XML::RPC> by trapping C<die()>'s.
 
 =cut
 
-sub fault_xmlrpc {
+sub fault_slimrat {
 	my ($code) = @_;
-	my $message = $errors_xmlrpc{$code} || '';
+	my $message = $errors_messages{$code} || '';
 	
 	$XML::RPC::faultCode = $code;
 	die($message . "\n");	# The "\n" prevents die() from printing a trace
@@ -451,7 +462,7 @@ writes a browser-friendly error message to the active socket.
 sub fault_http {
 	my ($client, $code) = @_;	
 	
-	my $message = $errors_http{$code} || "";
+	my $message = status_message($code) || "";
 	my $message_uc = uc($message);
 	my $message_ucfirst = join(' ', map { ucfirst } split(' ', $message));
 
