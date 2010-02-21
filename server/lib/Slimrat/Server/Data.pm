@@ -27,12 +27,20 @@ use Moose::Role;
 use strict;
 use warnings;
 
-# Propagation values
+# Constants
 use constant {
 	PROP_OFF	=> 0,
 	PROP_ADD	=> 1,
 	PROP_UPDATE	=> 2
 };
+# Export
+use vars qw(@ISA @EXPORT_OK %EXPORT_TAGS);
+require Exporter;
+@ISA = qw(Exporter);
+@EXPORT_OK = qw(PROP_OFF PROP_ADD PROP_UPDATE);
+%EXPORT_TAGS = (
+	propagation	=> [grep /^PROP_/, @EXPORT_OK]
+);
 
 ################################################################################
 # Design

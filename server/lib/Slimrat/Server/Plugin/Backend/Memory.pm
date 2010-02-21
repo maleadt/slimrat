@@ -29,8 +29,8 @@ exit all data will be lost.
 
 # Packages
 use Moose;
-use Storable qw//;
-use Slimrat::Server::Plugin::Backend;
+use Storable qw();
+use Slimrat::Server::Plugin::Backend qw(:consistency);
 use Slimrat::Server::Data::Download;
 use Slimrat::Server::Data::Group;
 use Slimrat::Server::Data::Restriction;
@@ -90,8 +90,16 @@ sub initialize {
 sub consistency {
 	my ($self) = @_;
 	
+	if (not defined $self->downloads &&	not defined $self->groups && not defined $self->restrictions ) {
+		return STAT_MISSING;
+	} elsif (not defined $self->downloads || not defined $self->groups || not defined $self->restrictions ) {
+		return STAT_CORRUPT;
+	}
+	
 	# Check all ID's
 	# TODO
+	
+	return STAT_GOOD;
 }
 
 sub store {
@@ -147,7 +155,7 @@ sub get_downloads_raw {
 }
 
 sub get_downloads {
-	my ($self, %filter);
+	my ($self, %filter) = @_;
 	
 	# Fetch references and build objects
 	my %refs = $self->get_downloads_raw(%filter);

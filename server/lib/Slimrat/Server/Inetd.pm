@@ -30,6 +30,7 @@ use XML::RPC;
 use HTTP::Status qw(:constants :is status_message);
 use Slimrat::Error qw(:constants :error error_message);
 use Slimrat::Server::Inetd::Connector;
+use Data::Dumper;
 
 # Write nicely
 use strict;
@@ -176,6 +177,11 @@ sub BUILD {
 		logger		=> $self->logger,
 		object		=> $self->backend,
 		function	=> 'add_download'
+	);
+	$self->connectors->{Backend}->{get_downloads} = new Slimrat::Server::Inetd::Connector(
+		logger		=> $self->logger,
+		object		=> $self->backend,
+		function	=> 'get_downloads'
 	);
 }
 
@@ -363,6 +369,7 @@ and possibly returns an XML-RPC fault prematurely.
 sub invoke {
 	my ($self, $package, $method, @params) = @_;
 	$self->logger->debug("invoking '$method'" . ($package?" in package '$package'":''));
+	$self->logger->debug('passed parameters:', Dumper(\@params));
 	
 	# Prevent critical errors from reaching the user
 	$SIG{__DIE__} = sub {

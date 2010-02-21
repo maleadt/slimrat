@@ -24,7 +24,7 @@ to the active backend.
 
 # Packages
 use Moose;
-use Slimrat::Server::Data;
+use Slimrat::Server::Data qw(:propagation);
 
 # Consume roles
 with 'Slimrat::Server::Data';
@@ -84,7 +84,7 @@ has 'directory' => (
 
 sub _trigger_directory {
 	my ($self, $value) = @_;
-	return unless ($self->propagation == Slimrat::Server::Data::PROP_UPDATE);
+	return unless ($self->propagation == PROP_UPDATE);
 	
 	$self->backend->update_group(
 		{ name => $self->name },
@@ -114,7 +114,7 @@ has 'restrictionids' => (
 sub _trigger_restrictionids {
 	my ($self, $value) = @_;
 	delete $self->{restrictions};
-	return unless ($self->propagation == Slimrat::Server::Data::PROP_UPDATE);
+	return unless ($self->propagation == PROP_UPDATE);
 	
 	$self->backend->update_group(
 		{ name => $self->name },
@@ -187,7 +187,7 @@ sub BUILD {
 	my ($self) = @_;
 	
 	# Object creation
-	if ($self->propagation == Slimrat::Server::Data::PROP_ADD) {
+	if ($self->propagation == PROP_ADD) {
 		my %dataset = ();
 		foreach my $key (@{KEYS_DATASET()}) {
 			my $value = $self->{$key};
@@ -196,7 +196,7 @@ sub BUILD {
 			}
 		}
 		$self->backend->add_group(%dataset);
-		$self->propagation(Slimrat::Server::Data::PROP_OFF);	# TODO?
+		$self->propagation(PROP_OFF);	# TODO?
 	}
 }
 

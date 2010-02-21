@@ -26,15 +26,21 @@ use XML::RPC;
 # Setup a connection to the server
 my $xmlrpc = XML::RPC->new('http://localhost:6800');
 
-# Test
-my $result = $xmlrpc->call('hello', {
+# Hello
+$xmlrpc->call('hello', {
 	client		=> "slimrat-cli/0.01",
 	protocol	=> 1
 });
-print "Result:\n";
-use Data::Dumper;
-print Dumper($result);
 
+# Add a download
 $xmlrpc->call('Backend.add_download', (
 	uri	=> 'http://www.google.com'
 ));
+
+# Fetch the download
+my @downloads = $xmlrpc->call('Backend.get_downloads', (
+	
+	{ 1 => 2 }
+));	# TODO: verplicht ne filter, empty hashes WORDEN gepasst!
+use Data::Dumper;
+print Dumper(\@downloads);

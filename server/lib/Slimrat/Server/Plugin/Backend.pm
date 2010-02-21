@@ -52,6 +52,17 @@ use constant {
 	CONTEXT_DONTCARE => 3
 };
 
+# Export
+use vars qw(@ISA @EXPORT_OK %EXPORT_TAGS);
+require Exporter;
+@ISA = qw(Exporter);
+@EXPORT_OK = qw(STAT_GOOD STAT_MISSING STAT_CORRUPT
+		CONTEXT_ARRAY CONTEXT_SCALAR CONTEXT_DONTCATE);
+%EXPORT_TAGS = (
+	consistency	=> [grep /^STAT_/, @EXPORT_OK],
+	context		=> [grep /^CONTEXT_/, @EXPORT_OK]
+);
+
 ################################################################################
 # Attributes
 #
@@ -174,6 +185,8 @@ section in L<Slimrat::Server::Data>!
 requires 'get_downloads';
 
 around 'get_downloads' => sub {
+	use Data::Dumper;
+	print Dumper(\@_);
 	my ($sub, $self, %filter) = @_;
 	
 	check_filter(
@@ -380,6 +393,7 @@ The parameters should contain following keys:
 
 sub check_data {
 	my %parameters = @_;
+	return unless $parameters{data};	# TODO: this should _die_, but as this always runs under eval (it be an xmlrpc invoker, it be the downloadmanger) -> why do we need a logger?
 	my %data = %{$parameters{data}};
 	my $logger = $parameters{logger};
 	
@@ -418,13 +432,14 @@ The parameters should contain following keys:
 =cut
 
 sub check_filter {
-	my %parameters = shift;
+	my %parameters = @_;
+	return unless $parameters{filter};
 	my %filter = %{$parameters{filter}};
 	my $logger = $parameters{logger};
 	
 	# Extract unique keys
 	my %uniques = ();
-	foreach my $key (keys %{$parameters{uniques}}) {
+	foreach my $key (@{$parameters{uniques}}) {
 		my $value = delete $filter{$key};
 		if (defined $value) {
 			$uniques{$key} = $value;
@@ -442,7 +457,7 @@ sub check_filter {
 	
 	# Extract regular keys
 	my %regulars = ();
-	foreach my $key (keys %{$parameters{regulars}}) {
+	foreach my $key (@{$parameters{regulars}}) {
 		my $value = delete $filter{$key};
 		if (defined $value) {
 			$regulars{$key} = $value;

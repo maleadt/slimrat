@@ -24,7 +24,7 @@ to the active backend.
 
 # Packages
 use Moose;
-use Slimrat::Server::Data;
+use Slimrat::Server::Data qw(:propagation);
 
 # Consume roles
 with 'Slimrat::Server::Data';
@@ -43,6 +43,15 @@ use constant {
 use constant KEYS_FILTER_UNIQUE => [qw{uri}];
 use constant KEYS_FILTER_REGULAR => [qw{status groupid restrictionids}];
 use constant KEYS_DATASET => [qw{uri status directory groupid restrictionids}];
+
+# Export
+use vars qw(@ISA @EXPORT_OK %EXPORT_TAGS);
+require Exporter;
+@ISA = qw(Exporter);
+@EXPORT_OK = qw(STAT_STOPPED STAT_PAUSED STAT_RUNNING STAT_COMPLETED);
+%EXPORT_TAGS = (
+	status	=> [grep /^STAT_/, @EXPORT_OK]
+);
 
 
 ################################################################################
@@ -98,7 +107,7 @@ has 'status' => (
 
 sub _trigger_status {
 	my ($self, $value) = @_;
-	return unless ($self->propagation == Slimrat::Server::Data::PROP_UPDATE);
+	return unless ($self->propagation == PROP_UPDATE);
 	
 	$self->backend->update_download(
 		{ uri => $self->uri },
@@ -131,7 +140,7 @@ has 'directory' => (
 # Propagation-handling
 sub _trigger_directory {
 	my ($self, $value) = @_;
-	return unless ($self->propagation == Slimrat::Server::Data::PROP_UPDATE);
+	return unless ($self->propagation == PROP_UPDATE);
 	
 	$self->backend->update_download(
 		{ uri => $self->uri },
@@ -181,7 +190,7 @@ has 'groupid' => (
 sub _trigger_groupid {
 	my ($self, $value) = @_;
 	delete $self->{group};
-	return unless ($self->propagation == Slimrat::Server::Data::PROP_UPDATE);
+	return unless ($self->propagation == PROP_UPDATE);
 	
 	$self->backend->update_download(
 		{ uri => $self->uri },
@@ -252,7 +261,7 @@ has 'restrictionids' => (
 sub _trigger_restrictionids {
 	my ($self, $value) = @_;
 	delete $self->{restrictions};
-	return unless ($self->propagation == Slimrat::Server::Data::PROP_UPDATE);
+	return unless ($self->propagation == PROP_UPDATE);
 	
 	$self->backend->update_download(
 		{ uri => $self->uri },
@@ -346,7 +355,7 @@ sub BUILD {
 	my ($self) = @_;
 	
 	# Object creation
-	if ($self->propagation == Slimrat::Server::Data::PROP_ADD) {
+	if ($self->propagation == PROP_ADD) {
 		my %dataset = ();
 		foreach my $key (@{KEYS_DATASET()}) {
 			my $value = $self->{$key};
@@ -355,7 +364,7 @@ sub BUILD {
 			}
 		}
 		$self->backend->add_download(%dataset);
-		$self->propagation(Slimrat::Server::Data::PROP_OFF);	# TODO?
+		$self->propagation(PROP_OFF);	# TODO?
 	}
 }
 
