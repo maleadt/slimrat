@@ -25,6 +25,7 @@ use Moose;
 use IO::Socket;
 use XML::RPC;
 use HTTP::Status qw(:constants :is status_message);
+use Slimrat::Server::Inetd::Connector;
 
 # Write nicely
 use strict;
@@ -165,6 +166,11 @@ sub _build_xmlrpc {
 	$self->{'xmlrpc'} = XML::RPC->new();
 }
 
+has 'connectors' => (
+	is		=> 'rw',
+	isa		=> 'HashRef[HashRef[Slimrat::Server::Inetd::Connector]]'
+);
+
 ################################################################################
 # Methods
 #
@@ -188,7 +194,16 @@ sub BUILD {
 	
 	# Build attributes which depend on the config object
 	$self->socket();
-	$self->xmlrpc();	
+	$self->xmlrpc();
+	
+	# FIXME: build connectors
+	my %connectors;
+	$connectors{Backend}->{add_download} = new Slimrat::Server::Inetd::Connector(
+		logger		=> $self->logger,
+		object		=> $self->backend,
+		function	=> 'add_download'
+	);
+	$self->connectors(\%connectors);
 }
 
 =pod
@@ -403,23 +418,18 @@ sub invoke {
 	
 	
 	#
-	# Backend
+	# Backend methods
 	#
 	
-	elsif ($package eq "backend") {
-		if ($method eq "add_download") {
-			use Data::Dumper;
-			print Dumper(\@params);
-			return;			
-		}
+	else {
+		my $connector = $self->connectors->{$package}->{$method};
+		fault_slimrat(SLIMRAT_NOT_FOUND) unless defined $connector;
+		
+		$connector->check(@params)
+			or fault_slimrat(SLIMRAT_BAD_REQUEST);
+		
+		$connector->invoke(@params);
 	}
-	
-	
-	#
-	# Other
-	#
-	
-	fault_slimrat(SLIMRAT_NOT_FOUND);
 	
 }
 

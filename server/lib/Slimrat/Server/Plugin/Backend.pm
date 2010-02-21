@@ -184,7 +184,7 @@ around 'get_downloads' => sub {
 		context => wantarray ? CONTEXT_ARRAY : CONTEXT_SCALAR,	
 	) or return;
 	
-	return $self->get_downloads(%filter);
+	return $self->$sub(%filter);
 };
 
 requires 'add_download';
@@ -198,7 +198,7 @@ around 'add_download' => sub {
 		keys => Slimrat::Server::Data::Download::KEYS_DATASET,
 	) or return;
 	
-	return $self->add_download(%data);
+	return $self->$sub(%data);
 };
 
 requires 'update_downloads';
@@ -220,7 +220,7 @@ around 'update_downloads' => sub {
 		keys => [qw{uri groupid restrictionids}]
 	) or return;
 	
-	return $self->update_download($filterref, $dataref);
+	return $self->$sub($filterref, $dataref);
 };
 
 =pod
@@ -253,7 +253,7 @@ around 'get_groups' => sub {
 		context => wantarray ? CONTEXT_ARRAY : CONTEXT_SCALAR,	
 	) or return;
 	
-	return $self->get_groups(%filter);
+	return $self->$sub(%filter);
 };
 
 requires 'add_group';
@@ -267,7 +267,7 @@ around 'add_group' => sub {
 		keys => Slimrat::Server::Data::Group::KEYS_DATASET,
 	) or return;
 	
-	return $self->add_group(%data);
+	return $self->$sub(%data);
 };
 
 requires 'update_groups';
@@ -289,7 +289,7 @@ around 'update_groups' => sub {
 		keys => [qw{uri groupid restrictionids}]
 	) or return;
 	
-	return $self->update_group($filterref, $dataref);
+	return $self->$sub($filterref, $dataref);
 };
 
 =pod
@@ -318,7 +318,7 @@ around 'get_restrictions' => sub {
 		context => wantarray ? CONTEXT_ARRAY : CONTEXT_SCALAR,	
 	) or return;
 	
-	return $self->get_restrictions(%filter);
+	return $self->$sub(%filter);
 };
 
 requires 'add_restriction';
@@ -332,7 +332,7 @@ around 'add_restriction' => sub {
 		keys => Slimrat::Server::Data::Restriction::KEYS_DATASET,
 	) or return;
 	
-	return $self->add_restriction(%data);
+	return $self->$sub(%data);
 };
 
 requires 'update_restrictions';
@@ -354,7 +354,7 @@ around 'update_restrictions' => sub {
 		keys => [qw{uri restrictionid restrictionids}]
 	) or return;
 	
-	return $self->update_restriction($filterref, $dataref);
+	return $self->$sub($filterref, $dataref);
 };
 
 
@@ -379,13 +379,13 @@ The parameters should contain following keys:
 =cut
 
 sub check_data {
-	my %parameters = shift;
+	my %parameters = @_;
 	my %data = %{$parameters{data}};
 	my $logger = $parameters{logger};
 	
 	# Extract valid keys
 	my %keys = ();
-	foreach my $key (keys %{$parameters{keys}}) {
+	foreach my $key (keys %data) {
 		my $value = delete $data{$key};
 		if (defined $value) {
 			$keys{$key} = $value;
