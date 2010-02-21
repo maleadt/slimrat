@@ -75,9 +75,7 @@ sub reset {
 	my ($self) = @_;
 	
 	# Reset all
-	$self->downloads( undef );
-	$self->groups( undef );
-	$self->restrictions( undef );	
+	delete $self->{qw/downloads groups restrictions/};
 }
 
 sub initialize {

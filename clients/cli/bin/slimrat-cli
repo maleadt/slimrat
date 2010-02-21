@@ -6,6 +6,7 @@
 
 # XXX: library location
 use lib '../lib';
+use lib '../../common/lib';
 
 # Write nicely
 use warnings;

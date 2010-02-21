@@ -20,11 +20,15 @@ listening for remote requests and translating them to local procedure calls.
 
 =cut
 
+# XXX: library location
+use lib '/home/tim/Programming/Perl/slimrat-rewrite/trunk/common/lib';
+
 # Packages
 use Moose;
 use IO::Socket;
 use XML::RPC;
 use HTTP::Status qw(:constants :is status_message);
+use Slimrat::Error qw(:constants :error error_message);
 use Slimrat::Server::Inetd::Connector;
 
 # Write nicely
@@ -36,36 +40,6 @@ use constant {
 	UNKNOWN	=> 0,
 	HTTP	=> 1
 };
-
-# Error codes
-use constant {
-	SLIMRAT_VERSION_NOT_SUPPORTED	=> 0,
-	
-	# System failures
-	SLIMRAT_INTERNAL_FAILURE	=> 1,
-	SLIMRAT_BACKEND_FAILURE		=> 2,
-	
-	# Service issues
-	SLIMRAT_SERVICE_UNAVAILABLE	=> 10,
-	
-	# Method issues
-	SLIMRAT_NOT_FOUND		=> 20,
-	SLIMRAT_BAD_REQUEST		=> 21
-};
-my %errors_messages = (
-	SLIMRAT_VERSION_NOT_SUPPORTED()	=> 'version not supported',
-	
-	# System failures
-	SLIMRAT_INTERNAL_FAILURE()	=> 'internal failure',
-	SLIMRAT_BACKEND_FAILURE	()	=> 'backend failure',
-	
-	# Service issues
-	SLIMRAT_SERVICE_UNAVAILABLE()	=> 'service unavailable',
-	
-	# Method issues
-	SLIMRAT_NOT_FOUND()		=> 'not found',
-	SLIMRAT_BAD_REQUEST()		=> 'bad request'
-);
 
 
 ################################################################################
@@ -168,7 +142,8 @@ sub _build_xmlrpc {
 
 has 'connectors' => (
 	is		=> 'rw',
-	isa		=> 'HashRef[HashRef[Slimrat::Server::Inetd::Connector]]'
+	isa		=> 'HashRef[HashRef[Slimrat::Server::Inetd::Connector]]',
+	default		=> sub { {} }
 );
 
 ################################################################################
@@ -197,13 +172,11 @@ sub BUILD {
 	$self->xmlrpc();
 	
 	# FIXME: build connectors
-	my %connectors;
-	$connectors{Backend}->{add_download} = new Slimrat::Server::Inetd::Connector(
+	$self->connectors->{Backend}->{add_download} = new Slimrat::Server::Inetd::Connector(
 		logger		=> $self->logger,
 		object		=> $self->backend,
 		function	=> 'add_download'
 	);
-	$self->connectors(\%connectors);
 }
 
 =pod
@@ -465,7 +438,7 @@ by L<XML::RPC> by trapping C<die()>'s.
 
 sub fault_slimrat {
 	my ($code) = @_;
-	my $message = $errors_messages{$code} || '';
+	my $message = error_message($code) || '';
 	
 	$XML::RPC::faultCode = $code;
 	die($message . "\n");	# The "\n" prevents die() from printing a trace

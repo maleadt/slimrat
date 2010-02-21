@@ -6,6 +6,7 @@
 
 # XXX: library location
 use lib '../lib';
+use lib '../../common/lib';
 
 # Packages
 use Slimrat::Server::Configuration;
@@ -62,6 +63,10 @@ my $backend = $pluginmanager->get_plugin(
 	config	=> $config->get_section($backend_name),
 	logger	=> $logger->get_section("backend")
 );
+
+# FIXME: configure the backend
+$backend->reset();
+$backend->initialize();
 
 # Load the download manager
 # TODO: download manager nodig? Waarom niet gewoon alle functionaliteit in een
