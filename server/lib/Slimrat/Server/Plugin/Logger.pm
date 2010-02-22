@@ -160,8 +160,9 @@ around 'warning' => sub {
 
 =head2 C<$logger->error(@messages)>
 
-An error message. This indicates that something went wrong, but the application
-may continue execution (eg. a failed download).
+An error message indicating a subsystem failure. If this error is to be expected,
+one should trap the error and continue executing. If unexpected, the untrapped
+die kills the server.
 
 Requires verbosity to be 1 or higher.
 
@@ -173,13 +174,14 @@ around 'error' => sub {
 	my ($sub, $self, @params) = @_;
 	
 	$self->$sub(@params) if $self->config->get('verbosity') >= 1;
+	die("looger-reported error, see above for details\n");
 };
 
 =pod
 
 =head2 C<$logger->fatal(@messages)>
 
-A fatal error. This instantly halts the application.
+A fatal error. This instantly halts the application, and cannot be trapped.
 
 Requires verbosity to be 0 or higher.
 
@@ -192,7 +194,7 @@ around 'fatal' => sub {
 	
 	$self->$sub(@params) if $self->config->get('verbosity') >= 0;
 	
-	CORE::exit(1);	# TODO: seems to get trapped, provide some exiit handler
+	CORE::exit(1);	# TODO: seems to get trapped, maybe provide some exit handler
 	# to be provided to the logger
 };
 

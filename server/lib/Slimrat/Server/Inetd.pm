@@ -41,6 +41,9 @@ use constant {
 	UNKNOWN	=> 0,
 	HTTP	=> 1
 };
+use constant {
+	VERSION_PROTOCOL	=> 1
+};
 
 
 ################################################################################
@@ -257,7 +260,7 @@ sub process_connection {
 		$message .= $_;
 	}
 	$self->logger->debug("extracted request header", $message);
-	return $self->logger->error("could not identify request header")
+	$self->logger->error("could not identify request header")
 		unless defined $type;
 	
 	# Process the connection
@@ -314,11 +317,11 @@ sub process_http {
 		if ($headers{'Content-Type'} eq 'text/xml') {
 			$self->process_http_xmlrpc($client, $body);
 		} else {
-			$self->logger->error('refusing unused content-type \'' . $headers{'Content-Type'} . '\'');
+			$self->logger->warning('refusing unused content-type \'' . $headers{'Content-Type'} . '\'');
 			fault_http($client, HTTP_BAD_REQUEST);
 		}	
 	} else {
-		$self->logger->error("refusing unused method '$method'");
+		$self->logger->warning("refusing unused method '$method'");
 		fault_http($client, HTTP_NOT_IMPLEMENTED);
 	}
 }
@@ -369,14 +372,14 @@ and possibly returns an XML-RPC fault prematurely.
 sub invoke {
 	my ($self, $package, $method, @params) = @_;
 	$self->logger->debug("invoking '$method'" . ($package?" in package '$package'":''));
-	$self->logger->debug('passed parameters:', Dumper(\@params));
+	$self->logger->debug('recieved parameters:', Dumper(\@params));
 	
 	# Prevent critical errors from reaching the user
 	$SIG{__DIE__} = sub {
 		# Ignore DIE's which _should_ read XML::RPC's own handler
 		die(@_) if (caller(1))[3] =~ q{fault_slimrat$};
 		
-		$self->logger->error('client caused die-signal', @_);
+		$self->logger->warning('client caused die-signal', @_);
 		fault_slimrat(SLIMRAT_INTERNAL_FAILURE);
 	};
 	$SIG{__WARN__} = sub {
@@ -390,9 +393,11 @@ sub invoke {
 	
 	if (not defined $package) {
 		if ($method eq "hello") {
-			use Data::Dumper;
-			print Dumper(\@params);
-			return;
+			my %hello = %{$params[0]};
+			fault_slimrat(SLIMRAT_BAD_REQUEST)
+				unless defined $hello{protocol} && defined $hello{client};
+			fault_slimrat(SLIMRAT_VERSION_NOT_SUPPORTED)
+				unless $hello{protocol} == VERSION_PROTOCOL;
 		}
 	}
 	

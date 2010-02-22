@@ -185,8 +185,6 @@ section in L<Slimrat::Server::Data>!
 requires 'get_downloads';
 
 around 'get_downloads' => sub {
-	use Data::Dumper;
-	print Dumper(\@_);
 	my ($sub, $self, %filter) = @_;
 	
 	check_filter(

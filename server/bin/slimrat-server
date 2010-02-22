@@ -53,6 +53,9 @@ my $logger = $pluginmanager->get_plugin(
 	config	=> $config->get_section($logger_name)
 );
 print " Switching output\n";
+$SIG{__DIE__} = sub {
+	$logger->fatal("untrapped system failure ($@)");
+};
 
 # Load the backend
 $logger->info("loading backend");
