@@ -51,15 +51,19 @@ use warnings;
 sub BUILD {
 	my $self = shift;
 	
+	# Setup configuration
+	$self->config->set_default('type', undef);
+	$self->config->set_default('location', undef);
+	
 	# Connect using a custom socket
-	if ($self->config->defines('type')) {
-		if ($self->config->defines('location')) {
+	if (defined($self->config->get('type'))) {
+		if (defined($self->config->get('location'))) {
 			setlogsock(	$self->config->get('type'),
 					$self->config->get('location'));
 		} else {
 			setlogsock(	$self->config->get('type'));
 		}
-	} elsif ($self->config->defines('location')) {
+	} elsif (defined($self->config->get('location'))) {
 		croak('Custom location requires "type" to be defined as well');
 	}
 	

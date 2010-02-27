@@ -179,12 +179,14 @@ sub BUILD {
 	$self->connectors->{Backend}->{add_download} = new Slimrat::Server::Inetd::Connector(
 		logger		=> $self->logger,
 		object		=> $self->backend,
-		function	=> 'add_download'
+		function	=> 'add_download',
+		signature	=> ['HASHREF']
 	);
 	$self->connectors->{Backend}->{get_downloads} = new Slimrat::Server::Inetd::Connector(
 		logger		=> $self->logger,
 		object		=> $self->backend,
-		function	=> 'get_downloads'
+		function	=> 'get_downloads',
+		signature	=> ['HASHREF']
 	);
 }
 

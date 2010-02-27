@@ -57,8 +57,8 @@ sub _build_handle {
 	# Create database connection
 	my $handle = DBI->connect(
 		$self->config->get('source'),
-		$self->config->defined('username') ? $self->config->get('username') : undef,
-		$self->config->defined('password') ? $self->config->get('password') : undef,
+		defined($self->config->get('username')) ? $self->config->get('username') : undef,
+		defined($self->config->get('password')) ? $self->config->get('password') : undef,
 		{
 			PrintError	=> 0,
 			AutoCommit	=> 0,
@@ -76,9 +76,12 @@ sub _build_handle {
 sub BUILD {
 	my ($self) = @_;
 	
-	# Setup configuration
+	# Setup and verify configuration
+	$self->config->set_default('source', undef);
+	$self->config->set_default('username', undef);
+	$self->config->set_default('password', undef);
 	$self->logger->fatal("missing database source")
-		unless $self->config->defines('source');
+		unless defined($self->config->get('source'));
 	
 	# Build attributes depending on the configuration object
 	$self->handle();

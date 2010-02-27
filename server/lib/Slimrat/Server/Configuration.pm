@@ -123,8 +123,15 @@ sub init {
 
 =head2 $configuration->defines($key)
 
-Check whether a specific key has been entered in the configuration (albeit by default
-or customized value). This does not look at the value itself, which can e.g. be 'undef'.
+Check whether a specific key has been entered in the configuration (albeit by
+default or customized value). This does not look at the value itself,
+which can e.g. be 'undef'. This method should only be used internally. If you
+want to check if the user specified a value, you should rather specify a
+default value of C<undef> and check that using C<defined($config->get('foo'))>.
+This will give you a warning every time you use an undefined key, which provides
+you with another layer of protection. Also, it provides you with code implicitely
+listing all possible configuration keys, easing development if documentation is
+absent or incomplete.
 
 =cut
 

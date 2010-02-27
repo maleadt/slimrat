@@ -184,7 +184,7 @@ sub update_downloads {
 	
 	my $modified = 0;
 	
-	# Fetch dopwnloads
+	# Fetch downloads
 	my %refs = $self->get_downloads_raf(%filter);
 	foreach my $id (keys %refs) {
 		my $ref = $refs{$id};

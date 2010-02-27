@@ -79,6 +79,20 @@ has 'function' => (
 	required	=> 1
 );
 
+=pod
+
+=head2 C<signature>
+
+The function signature.
+
+=cut
+
+has 'signature' => (
+	is		=> 'ro',
+	isa		=> 'ArrayRef[Str]',
+	default		=> sub { [] }
+);
+
 
 ################################################################################
 # Methods
@@ -112,7 +126,13 @@ sub check {
 	$self->logger->error("function does not exist")
 		unless ($self->object->can($self->function));
 	
-	# TODO: check parameters	
+	# Check function signature
+	$self->logger->error("incorrect amount of parameters")
+		unless (@_ == @{$self->signature});
+	for my $i (0 .. @_) {
+		$self->logger->error("incorrect parameter")
+			unless (ref(\($_[$i])) eq $self->signature->[$i]);
+	}
 }
 
 =pod
