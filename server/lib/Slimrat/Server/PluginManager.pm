@@ -84,7 +84,7 @@ sub _build_plugins {
 		or die("Error discovering logger plugins: $!");
 	
 	# Process all plugins
-	my %loggers;
+	my %plugins_usable;
 	for my $package (sort keys %plugins) {
 		my $file = $plugins{$package};
 		
@@ -118,10 +118,10 @@ sub _build_plugins {
 			}
 			next;
 		}
-		$loggers{$package} = \%infohash;
+		$plugins_usable{$package} = \%infohash;
 	}
 	
-	return \%loggers;
+	return \%plugins_usable;
 }
 
 ################################################################################
